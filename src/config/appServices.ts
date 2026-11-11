@@ -17,6 +17,7 @@ export const getProductRepo = (): ProductRepo => {
         description: 'A seeded example product for local testing.',
         updatedAt: new Date(now.getTime() - 1000 * 60 * 60 * 24), // 1 day ago
       },
+      
       {
         id: 'p-002',
         name: 'Seeded Gadget',
