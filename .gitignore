@@ -1,48 +1,106 @@
-bin
-obj
-csx
-.vs
-edge
-Publish
+# ---------------------------------------------------------------------------
+# Node / TypeScript
+# ---------------------------------------------------------------------------
+node_modules/
+dist/
+*.tsbuildinfo
+.npm/
+.eslintcache
+coverage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-*.user
-*.suo
-*.cscfg
-*.Cache
-project.lock.json
-
-/packages
-/TestResults
-
-/tools/NuGet.exe
-/App_Data
-/secrets
-/data
-.secrets
-appsettings.json
+# ---------------------------------------------------------------------------
+# Azure Functions
+# ---------------------------------------------------------------------------
 local.settings.json
-
-node_modules
-dist
-
-# Local python packages
+appsettings.json
+bin/
+obj/
+csx/
+.vs/
+edge/
+Publish/
 .python_packages/
 
-# Python Environments
+# Azurite (local storage emulator) artifacts
+__blobstorage__
+__queuestorage__
+__azurite_db*__.json
+
+# ---------------------------------------------------------------------------
+# Terraform (infra/)
+# ---------------------------------------------------------------------------
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+crash.log
+crash.*.log
+.terraform.tfstate.lock.info
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Variable files may contain secrets/personal values; keep only the example.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+# NOTE: .terraform.lock.hcl SHOULD be committed.
+
+# ---------------------------------------------------------------------------
+# Secrets / environment
+# ---------------------------------------------------------------------------
 .env
-.venv
-env/
+.env.*
+!.env.example
+/secrets
+.secrets
+*.pem
+*.key
+*.pfx
+*.publishsettings
+
+# ---------------------------------------------------------------------------
+# Python (tooling)
+# ---------------------------------------------------------------------------
+.venv/
 venv/
+env/
 ENV/
 env.bak/
 venv.bak/
-
-# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Azurite artifacts
-__blobstorage__
-__queuestorage__
-__azurite_db*__.json
+# ---------------------------------------------------------------------------
+# Logs / test output
+# ---------------------------------------------------------------------------
+logs/
+*.log
+/TestResults
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+# .vscode/ is shared (extensions/settings), only ignore personal files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.user
+*.suo
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini

@@ -1,0 +1,12 @@
+# Copy to terraform.tfvars and fill in your own values.
+location              = "uksouth"
+resource_group_name   = "shopping-lab-ab47-rg"
+create_resource_group = true
+storage_account_name  = "shoppinglabab47funcsa"
+function_app_name     = "shopping-lab-ab47-func"
+
+cors_allowed_origins = ["http://localhost:5173"]
+
+app_settings = {
+  PRODUCT_UPDATED_BASE_URL = ""
+}
