@@ -1,10 +1,14 @@
 terraform {
-  required_version = ">= 1.5.0"
+  required_version = ">= 1.5"
 
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 4.0"
+      version = "~> 4.40"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.6"
     }
   }
 }
@@ -12,6 +16,6 @@ terraform {
 provider "azurerm" {
   features {}
 
-  # Uses the subscription from `az account show` unless overridden.
+  # Uses the current `az account show` subscription when left null.
   subscription_id = var.subscription_id
 }
