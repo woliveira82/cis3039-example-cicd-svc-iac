@@ -170,7 +170,7 @@ The workflow `.github/workflows/build.yml` runs:
 
 ### One-time setup
 
-Terraform state must be stored in Azure so CI runs (and your local runs) share it. GitHub signs in to Azure with OIDC, so no secrets are stored in GitHub.
+Terraform state must be stored in Azure so CI runs (and your local runs) share it. GitHub signs in to Azure as a service principal using a client secret, stored as the repository secret `AZURE_CLIENT_SECRET`. The secret expires (1 year below), so rotate it before then (see [Rotating the client secret](#rotating-the-client-secret)).
 
 1. Create the Terraform state storage (pick a globally unique account name):
 
@@ -187,24 +187,19 @@ az storage container-rm create --storage-account $TFSTATE_SA \
   --resource-group $TFSTATE_RG --name tfstate
 ```
 
-2. Create an identity for GitHub Actions and trust this repo's `main` branch and pull requests:
+2. Create an identity for GitHub Actions and a client secret for it:
 
 ```bash
-REPO=<github-owner>/<repo-name>
 SUB_ID=$(az account show --query id -o tsv)
 TENANT_ID=$(az account show --query tenantId -o tsv)
 APP_ID=$(az ad app create --display-name shopping-lab-cicd --query appId -o tsv)
 az ad sp create --id $APP_ID
 
-for SUBJECT in "ref:refs/heads/main" "pull_request"; do
-  az ad app federated-credential create --id $APP_ID --parameters "{
-    \"name\": \"github-$(echo $SUBJECT | tr ':/' '--')\",
-    \"issuer\": \"https://token.actions.githubusercontent.com\",
-    \"subject\": \"repo:$REPO:$SUBJECT\",
-    \"audiences\": [\"api://AzureADTokenExchange\"]
-  }"
-done
+CLIENT_SECRET=$(az ad app credential reset --id $APP_ID --append \
+  --display-name github-actions --years 1 --query password -o tsv)
 ```
+
+> Treat `CLIENT_SECRET` like a password: don't echo it, commit it or paste it anywhere except the GitHub secret below.
 
 3. Grant access: the identity creates resources in the subscription and reads/writes the state blob. You also need blob access to run Terraform locally.
 
@@ -217,9 +212,10 @@ az role assignment create --assignee $(az ad signed-in-user show --query id -o t
   --role "Storage Blob Data Contributor" --scope $TFSTATE_ID
 ```
 
-4. Add GitHub repository variables (Settings > Secrets and variables > Actions > Variables), or with the `gh` CLI:
+4. Add the GitHub repository secret and variables (Settings > Secrets and variables > Actions; the client secret goes under **Secrets**, the rest under **Variables**), or with the `gh` CLI:
 
 ```bash
+gh secret set AZURE_CLIENT_SECRET --body "$CLIENT_SECRET"
 gh variable set AZURE_CLIENT_ID --body $APP_ID
 gh variable set AZURE_TENANT_ID --body $TENANT_ID
 gh variable set AZURE_SUBSCRIPTION_ID --body $SUB_ID
@@ -228,6 +224,22 @@ gh variable set TFSTATE_STORAGE_ACCOUNT --body $TFSTATE_SA
 gh variable set AZURE_LOCATION --body $LOCATION
 # Optional: TFSTATE_CONTAINER (default tfstate)
 ```
+
+### Rotating the client secret
+
+Before the secret expires (or if it leaks), create a new one and update GitHub. `--append` keeps the old one working until you remove it:
+
+```bash
+CLIENT_SECRET=$(az ad app credential reset --id $APP_ID --append \
+  --display-name github-actions --years 1 --query password -o tsv)
+gh secret set AZURE_CLIENT_SECRET --body "$CLIENT_SECRET"
+
+# Then remove the old one (find its keyId in the list):
+az ad app credential list --id $APP_ID -o table
+az ad app credential delete --id $APP_ID --key-id <old-key-id>
+```
+
+> Moving from an earlier OIDC setup? Remove the now-unused federated credentials with `az ad app federated-credential list --id $APP_ID` and `az ad app federated-credential delete --id $APP_ID --federated-credential-id <id>`.
 
 ### Running Terraform locally
 
