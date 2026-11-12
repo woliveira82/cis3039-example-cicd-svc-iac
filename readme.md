@@ -156,3 +156,86 @@ az functionapp cors add \
   --resource-group <your-resource-group> \
   --allowed-origins http://localhost:5173
 ```
+
+## Terraform and CI/CD
+
+The `infra/` folder declares the same resources as the manual Azure Setup above (resource group, storage account, consumption plan, Function App, Application Insights). Resource names are generated as `<project>-<environment>-<random suffix>`, e.g. `shopping-lab-x7k2qm-rg`.
+
+The workflow `.github/workflows/build.yml` runs:
+
+| Event | Jobs |
+| --- | --- |
+| Pull request to `main` | `build` (npm build, `terraform fmt`/`validate`) then `plan` (Terraform plan against Azure) |
+| Push to `main` / manual run | `build` then `deploy` (Terraform apply, publish code, smoke test `/api/products`) |
+
+### One-time setup
+
+Terraform state must be stored in Azure so CI runs (and your local runs) share it. GitHub signs in to Azure with OIDC, so no secrets are stored in GitHub.
+
+1. Create the Terraform state storage (pick a globally unique account name):
+
+```bash
+LOCATION=uksouth
+TFSTATE_RG=shopping-lab-tfstate-rg
+TFSTATE_SA=<yourtfstateaccount>
+
+az group create --name $TFSTATE_RG --location $LOCATION
+az storage account create --name $TFSTATE_SA --resource-group $TFSTATE_RG \
+  --location $LOCATION --sku Standard_LRS \
+  --min-tls-version TLS1_2 --allow-blob-public-access false
+az storage container-rm create --storage-account $TFSTATE_SA \
+  --resource-group $TFSTATE_RG --name tfstate
+```
+
+2. Create an identity for GitHub Actions and trust this repo's `main` branch and pull requests:
+
+```bash
+REPO=<github-owner>/<repo-name>
+SUB_ID=$(az account show --query id -o tsv)
+TENANT_ID=$(az account show --query tenantId -o tsv)
+APP_ID=$(az ad app create --display-name shopping-lab-cicd --query appId -o tsv)
+az ad sp create --id $APP_ID
+
+for SUBJECT in "ref:refs/heads/main" "pull_request"; do
+  az ad app federated-credential create --id $APP_ID --parameters "{
+    \"name\": \"github-$(echo $SUBJECT | tr ':/' '--')\",
+    \"issuer\": \"https://token.actions.githubusercontent.com\",
+    \"subject\": \"repo:$REPO:$SUBJECT\",
+    \"audiences\": [\"api://AzureADTokenExchange\"]
+  }"
+done
+```
+
+3. Grant access: the identity creates resources in the subscription and reads/writes the state blob. You also need blob access to run Terraform locally.
+
+```bash
+TFSTATE_ID=$(az storage account show --name $TFSTATE_SA --resource-group $TFSTATE_RG --query id -o tsv)
+
+az role assignment create --assignee $APP_ID --role Contributor --scope /subscriptions/$SUB_ID
+az role assignment create --assignee $APP_ID --role "Storage Blob Data Contributor" --scope $TFSTATE_ID
+az role assignment create --assignee $(az ad signed-in-user show --query id -o tsv) \
+  --role "Storage Blob Data Contributor" --scope $TFSTATE_ID
+```
+
+4. Add GitHub repository variables (Settings > Secrets and variables > Actions > Variables), or with the `gh` CLI:
+
+```bash
+gh variable set AZURE_CLIENT_ID --body $APP_ID
+gh variable set AZURE_TENANT_ID --body $TENANT_ID
+gh variable set AZURE_SUBSCRIPTION_ID --body $SUB_ID
+gh variable set TFSTATE_RESOURCE_GROUP --body $TFSTATE_RG
+gh variable set TFSTATE_STORAGE_ACCOUNT --body $TFSTATE_SA
+gh variable set AZURE_LOCATION --body $LOCATION
+# Optional: TFSTATE_CONTAINER (default tfstate)
+```
+
+### Running Terraform locally
+
+```bash
+cd infra
+cp backend.hcl.example backend.hcl   # fill in the same TFSTATE values
+terraform init -backend-config=backend.hcl
+terraform plan
+```
+
+> If you previously applied with local state, run `terraform init -migrate-state -backend-config=backend.hcl` to move it into Azure instead of creating a second set of resources.

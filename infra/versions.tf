@@ -11,6 +11,12 @@ terraform {
       version = "~> 3.6"
     }
   }
+
+  # State lives in Azure Storage so CI and local runs share it (otherwise each
+  # CI run would start empty and create a new set of resources). Settings are
+  # passed at init time: locally with -backend-config=backend.hcl (see
+  # backend.hcl.example), in CI from repository variables.
+  backend "azurerm" {}
 }
 
 provider "azurerm" {

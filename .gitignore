@@ -104,3 +104,6 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Terraform backend settings (per user; see infra/backend.hcl.example)
+backend.hcl
