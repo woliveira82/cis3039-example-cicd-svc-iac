@@ -25,6 +25,8 @@ env:
   ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
   ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
   ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+  # Never silently fall back to `az login` (not available on the runner).
+  ARM_USE_CLI: false
   # Optional overrides for infra/variables.tf.
   TF_VAR_location: ${{ vars.AZURE_LOCATION || 'uksouth' }}
 
@@ -82,6 +84,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check Azure credentials are configured
+        run: |
+          missing=0
+          for v in ARM_CLIENT_ID ARM_TENANT_ID ARM_SUBSCRIPTION_ID ARM_CLIENT_SECRET; do
+            if [ -z "${!v}" ]; then echo "::error::$v is empty - set the matching repository variable/secret"; missing=1; fi
+          done
+          exit $missing
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -118,6 +128,14 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - name: Check Azure credentials are configured
+        run: |
+          missing=0
+          for v in ARM_CLIENT_ID ARM_TENANT_ID ARM_SUBSCRIPTION_ID ARM_CLIENT_SECRET; do
+            if [ -z "${!v}" ]; then echo "::error::$v is empty - set the matching repository variable/secret"; missing=1; fi
+          done
+          exit $missing
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
