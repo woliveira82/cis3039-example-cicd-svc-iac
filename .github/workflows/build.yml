@@ -20,15 +20,6 @@ env:
   TF_VERSION: 1.17.1
   TF_IN_AUTOMATION: true
   TF_INPUT: false
-  # Terraform azurerm provider + backend authenticate as a service principal
-  # with a client secret (ARM_CLIENT_SECRET is set only on the jobs that need it).
-  ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
-  ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
-  ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
-  # Never silently fall back to `az login` (not available on the runner).
-  ARM_USE_CLI: false
-  # Optional overrides for infra/variables.tf.
-  TF_VAR_location: ${{ vars.AZURE_LOCATION || 'uksouth' }}
 
 jobs:
   # CI: runs on every push/PR, no Azure access needed.
@@ -71,10 +62,21 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     needs: build
     runs-on: ubuntu-latest
+    # Azure variables and secret come from the "dev" GitHub environment.
+    environment: dev
     permissions:
       contents: read
     env:
+      # Terraform azurerm provider + backend authenticate as a service principal
+      # with a client secret.
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      # Never silently fall back to `az login` (not available on the runner).
+      ARM_USE_CLI: false
+      # Optional overrides for infra/variables.tf.
+      TF_VAR_location: ${{ vars.AZURE_LOCATION || 'uksouth' }}
 
     defaults:
       run:
@@ -88,7 +90,7 @@ jobs:
         run: |
           missing=0
           for v in ARM_CLIENT_ID ARM_TENANT_ID ARM_SUBSCRIPTION_ID ARM_CLIENT_SECRET; do
-            if [ -z "${!v}" ]; then echo "::error::$v is empty - set the matching repository variable/secret"; missing=1; fi
+            if [ -z "${!v}" ]; then echo "::error::$v is empty - set the matching variable/secret in the dev environment"; missing=1; fi
           done
           exit $missing
 
@@ -114,10 +116,21 @@ jobs:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
+    # Azure variables and secret come from the "dev" GitHub environment.
+    environment: dev
     permissions:
       contents: read
     env:
+      # Terraform azurerm provider + backend authenticate as a service principal
+      # with a client secret.
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
       ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      # Never silently fall back to `az login` (not available on the runner).
+      ARM_USE_CLI: false
+      # Optional overrides for infra/variables.tf.
+      TF_VAR_location: ${{ vars.AZURE_LOCATION || 'uksouth' }}
 
     steps:
       - name: Checkout
@@ -133,7 +146,7 @@ jobs:
         run: |
           missing=0
           for v in ARM_CLIENT_ID ARM_TENANT_ID ARM_SUBSCRIPTION_ID ARM_CLIENT_SECRET; do
-            if [ -z "${!v}" ]; then echo "::error::$v is empty - set the matching repository variable/secret"; missing=1; fi
+            if [ -z "${!v}" ]; then echo "::error::$v is empty - set the matching variable/secret in the dev environment"; missing=1; fi
           done
           exit $missing
 
