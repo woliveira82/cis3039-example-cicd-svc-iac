@@ -42,6 +42,9 @@ jobs:
       - name: Build (into ./dist)
         run: npm run build
 
+      - name: Unit tests
+        run: npm test
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
