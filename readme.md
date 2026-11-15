@@ -42,6 +42,23 @@ cp local.settings.template.json local.settings.json
 npm run build
 ```
 
+## Unit tests
+
+Tests use [Vitest](https://vitest.dev/) and live next to the code they test (`src/**/*.test.ts`). Shared test helpers are in `src/test/`. Test files and helpers are excluded from the `tsc` build, so they never reach `dist/` or the Function App.
+
+```bash
+npm test               # run once
+npm run test:watch     # re-run on change
+npm run test:coverage  # with a v8 coverage report (written to ./coverage)
+```
+
+- **Domain / use cases** (`src/domain`, `src/app`): use the in-memory `FakeProductRepo` via dependency injection; `vi.spyOn` simulates repository failures.
+- **HTTP functions** (`src/functions`): `@azure/functions` is mocked so `app.http(...)` registrations are captured and the handlers are called directly, with `config/appServices` mocked to inject a fake repo and a fixed clock.
+
+CI runs `npm test` in the `build` job, so failing tests block the plan and deploy jobs.
+
+> `package.json` overrides `vite` to `^7` because vite 8's optional devtools peers make npm 10 crash (`Cannot read properties of null (reading 'edgesOut')`) when installing vitest.
+
 ## Local testing with curl
 
 ### Start the Function App
