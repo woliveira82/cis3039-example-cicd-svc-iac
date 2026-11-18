@@ -42,5 +42,5 @@ variable "product_updated_base_url" {
 variable "cors_allowed_origins" {
   description = "Origins allowed to make cross-domain calls, e.g. http://localhost:5173."
   type        = list(string)
-  default     = []
+  default     = ["https://productslabrufmx4st.z1.web.core.windows.net"]
 }
